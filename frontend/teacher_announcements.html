@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Post Announcements | EduPortal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-[#F8FAFC] flex h-screen overflow-hidden">
+
+    <aside class="w-64 bg-[#1E293B] text-white flex flex-col shrink-0">
+        <div class="p-8 border-b border-white/5">
+            <h1 class="text-2xl font-black italic uppercase">EduPortal</h1>
+            <p class="text-[10px] text-slate-400 font-bold uppercase mt-1">Faculty Edition</p>
+        </div>
+        <nav class="flex-1 mt-8 px-4 space-y-2">
+            <a href="teacher_dashboard.html" class="flex items-center gap-4 p-4 rounded-2xl hover:bg-white/5 transition">
+                <i class="fas fa-users w-5"></i> <span>Student Directory</span>
+            </a>
+            <a href="teacher_announcements.html" class="flex items-center gap-4 p-4 rounded-2xl bg-white/10 shadow-inner">
+                <i class="fas fa-bullhorn w-5"></i> <span class="font-bold">Announcements</span>
+            </a>
+        </nav>
+    </aside>
+
+    <main class="flex-1 p-12 overflow-y-auto">
+        <header class="mb-12">
+            <h2 class="text-4xl font-black text-slate-800 italic uppercase"> Announcements</h2>
+            <p class="text-slate-400 font-bold text-sm mt-1 uppercase">Send notifications to all students</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-12">
+            <div class="lg:col-span-1">
+                <div class="bg-white p-10 rounded-[2.5rem] shadow-sm border border-slate-100">
+                    <h3 class="text-xl font-bold mb-6 italic uppercase">New Broadcast</h3>
+                    <div class="space-y-4">
+                        <input type="text" id="announcement-title" placeholder="Topic (e.g. Exam Update)" class="w-full p-4 bg-slate-50 border rounded-2xl outline-none focus:ring-2 focus:ring-slate-800">
+                        <textarea id="announcement-body" rows="6" placeholder="Type your message..." class="w-full p-4 bg-slate-50 border rounded-2xl outline-none focus:ring-2 focus:ring-slate-800"></textarea>
+                        <button id="post-btn" class="w-full py-4 bg-slate-800 text-white rounded-2xl font-bold hover:bg-black transition shadow-lg uppercase tracking-widest">
+                            Post Announcement
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-2">
+                <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-6">Recent Posts</h3>
+                <div id="announcement-feed" class="space-y-6">
+                    </div>
+            </div>
+        </div>
+    </main>
+
+    <script type="module">
+        const localUser = JSON.parse(localStorage.getItem('currentUser'));
+        const token = localStorage.getItem('token');
+        if (!localUser || localUser.role !== 'teacher' || !token) window.location.href = "login.html";
+
+        document.getElementById('post-btn').addEventListener('click', async () => {
+            const title = document.getElementById('announcement-title').value;
+            const body = document.getElementById('announcement-body').value;
+
+            if (!title || !body) return alert("Fill both fields!");
+
+            try {
+                const res = await fetch('/announcements', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ title, body, author: localUser.name })
+                });
+                if (res.ok) {
+                    document.getElementById('announcement-title').value = '';
+                    document.getElementById('announcement-body').value = '';
+                    alert("Announcement Published!");
+                    loadAnnouncements();
+                } else {
+                    const errData = await res.json();
+                    alert(errData.message || "Failed to post");
+                }
+            } catch (err) { alert(err.message); }
+        });
+
+        async function loadAnnouncements() {
+            try {
+                const res = await fetch('/announcements', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    const announcements = await res.json();
+                    const feed = document.getElementById('announcement-feed');
+                    feed.innerHTML = '';
+                    announcements.forEach(a => {
+                        feed.innerHTML += `
+                            <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                                <h4 class="text-xl font-bold text-slate-800 mb-2">${a.title}</h4>
+                                <p class="text-slate-600 mb-6 leading-relaxed">${a.body}</p>
+                                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                    Posted by ${a.author} • ${new Date(a.createdAt).toLocaleDateString()}
+                                </p>
+                            </div>`;
+                    });
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+        
+        loadAnnouncements();
+    </script>
+</body>
+</html>

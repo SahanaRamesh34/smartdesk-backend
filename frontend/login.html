@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | EduPortal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .login-card { animation: slideUp 0.6s ease-out; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-[#6366f1] to-[#a855f7] flex items-center justify-center min-h-screen p-6">
+
+    <div class="login-card bg-white w-full max-w-md rounded-[2.5rem] p-10 shadow-2xl text-center">
+        <div class="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-6">
+            <i class="fas fa-user-shield"></i>
+        </div>
+
+        <h2 class="text-3xl font-black text-slate-800 mb-2 italic uppercase">Welcome Back</h2>
+        <p class="text-slate-500 mb-8 font-medium">Access your personalized portal.</p>
+
+        <div class="space-y-4 text-left">
+            <div>
+                <label class="block text-xs font-bold uppercase text-slate-400 mb-2 ml-1">Registered Email</label>
+                <div class="relative">
+                    <i class="fas fa-envelope absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"></i>
+                    <input type="email" id="login-email" placeholder="e.g., alex@edu.com" 
+                        class="w-full p-4 pl-12 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                </div>
+            </div>
+            <div>
+                <label class="block text-xs font-bold uppercase text-slate-400 mb-2 ml-1">Password</label>
+                <div class="relative">
+                    <i class="fas fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"></i>
+                    <input type="password" id="login-pass" placeholder="••••••••" 
+                        class="w-full p-4 pl-12 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                </div>
+            </div>
+        </div>
+
+        <button id="login-btn" class="w-full mt-8 py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition flex items-center justify-center gap-3">
+            <span>Verify & Enter</span>
+            <i class="fas fa-arrow-right"></i>
+        </button>
+
+        <p class="text-center mt-8 text-slate-500 font-medium text-sm">
+            Need an account? <a href="signup.html" class="text-indigo-600 font-black hover:underline">Register Here</a>
+        </p>
+    </div>
+
+    <script type="module">
+        document.getElementById('login-btn').addEventListener('click', async () => {
+            const email = document.getElementById('login-email').value;
+            const pass = document.getElementById('login-pass').value;
+
+            if (!email || !pass) return alert("Please fill in all details.");
+
+            const btn = document.getElementById('login-btn');
+            btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> <span>Authenticating...</span>`;
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password: pass })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('currentUser', JSON.stringify(data.user));
+
+                    if (data.user.role === 'teacher') {
+                        window.location.replace("teacher_dashboard.html");
+                    } else {
+                        window.location.replace("dashboard.html");
+                    }
+                } else {
+                    throw new Error(data.message || "Login Failed");
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Login Error: " + err.message);
+                btn.innerHTML = `<span>Verify & Enter</span> <i class="fas fa-arrow-right"></i>`;
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

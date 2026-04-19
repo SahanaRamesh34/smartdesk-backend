@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | EduPortal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .subject-card { transition: all 0.3s ease; border: 1px solid #f1f5f9; }
+        .subject-card:hover { transform: translateY(-5px); box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1); border-color: #6366f1; }
+        .sidebar-link:hover { background: rgba(255, 255, 255, 0.05); }
+    </style>
+</head>
+<body class="bg-[#F8FAFC] flex h-screen overflow-hidden">
+
+    <aside class="w-64 bg-[#2D317A] text-white flex flex-col shrink-0">
+        <div class="p-8 border-b border-white/5">
+            <h1 class="text-2xl font-black tracking-widest italic uppercase">EduPortal</h1>
+        </div>
+        
+        <nav class="flex-1 mt-8 px-4 space-y-2">
+            <a href="dashboard.html" class="flex items-center gap-4 p-4 rounded-2xl bg-white/10 shadow-inner">
+                <i class="fas fa-home w-5"></i> <span class="font-bold">Home</span>
+            </a>
+            <a href="calendar.html" class="flex items-center gap-4 p-4 rounded-2xl hover:bg-white/10 transition">
+                <i class="fas fa-calendar-alt w-5"></i> <span>Calendar</span>
+            </a>
+            <a href="progress.html" class="flex items-center gap-4 p-4 rounded-2xl hover:bg-white/10 transition">
+                <i class="fas fa-chart-line w-5"></i> <span>Progress</span>
+            </a>
+        </nav>
+
+        <div class="p-4 border-t border-white/5 space-y-2">
+            <button onclick="openEditModal()" class="w-full flex items-center justify-center gap-3 p-4 rounded-xl bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500 hover:text-white transition font-bold text-sm">
+                <i class="fas fa-user-edit"></i> Edit Profile
+            </button>
+            <button onclick="logout()" class="w-full flex items-center justify-center gap-3 p-4 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-600 hover:text-white transition font-bold text-sm">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
+        </div>
+    </aside>
+
+    <main class="flex-1 p-8 md:p-12 overflow-y-auto">
+        <header class="flex justify-between items-start mb-12">
+            <div>
+                <h2 id="user-welcome" class="text-4xl font-black text-slate-800 italic leading-tight uppercase">Loading...</h2>
+                <p id="user-reg" class="text-slate-400 font-bold tracking-wide text-sm">ID: SYNCING...</p>
+            </div>
+            <div id="user-avatar" class="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-600 shadow-xl flex items-center justify-center text-white text-xl font-bold">
+                </div>
+        </header>
+
+        <section class="mb-16">
+            <h3 class="text-lg font-bold text-slate-500 mb-6 uppercase tracking-widest flex items-center gap-3">
+                <span class="w-8 h-[2px] bg-indigo-600"></span> Recent Announcements
+            </h3>
+            <div id="announcement-list" class="space-y-4">
+                <div class="p-6 bg-white rounded-3xl border border-slate-100 animate-pulse">
+                    <div class="h-4 bg-slate-100 rounded w-1/4 mb-4"></div>
+                    <div class="h-4 bg-slate-100 rounded w-3/4"></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="mb-16">
+            <h3 class="text-lg font-bold text-slate-500 mb-6 uppercase tracking-widest flex items-center gap-3">
+                <span class="w-8 h-[2px] bg-indigo-600"></span> My Enrolled Subjects
+            </h3>
+            <div id="subject-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+                </div>
+        </section>
+
+        <!-- POMODORO TIMER -->
+        <section class="bg-indigo-600 text-white p-10 rounded-[2.5rem] shadow-xl mb-16 relative overflow-hidden flex flex-col items-center">
+            <h3 class="text-2xl font-black italic uppercase mb-6 z-10">Focus Timer</h3>
+            
+            <select id="timer-subject" class="bg-white/20 border border-white/30 text-white p-4 rounded-2xl mb-6 outline-none font-bold backdrop-blur-md z-10 w-full max-w-xs cursor-pointer appearance-none text-center">
+                <option value="" disabled selected class="text-slate-800">Select a Subject</option>
+            </select>
+
+            <div class="text-7xl md:text-9xl font-black tracking-tighter mb-8 z-10 font-mono drop-shadow-lg" id="timer-display">25:00</div>
+
+            <div class="flex gap-4 z-10">
+                <button id="btn-start" onclick="startTimer()" class="bg-white text-indigo-600 px-8 py-4 rounded-2xl font-black text-lg hover:bg-slate-100 transition shadow-lg">Start Focus</button>
+                <button id="btn-pause" onclick="pauseTimer()" class="bg-white/20 text-white px-8 py-4 rounded-2xl font-bold text-lg hover:bg-white/30 transition hidden border border-white/30 backdrop-blur-md">Pause</button>
+                <button id="btn-stop" onclick="stopTimer()" class="bg-red-500 text-white px-8 py-4 rounded-2xl font-bold text-lg hover:bg-red-600 transition hidden shadow-lg">End Session</button>
+            </div>
+            
+            <i class="fas fa-clock absolute -bottom-10 -right-10 text-[15rem] opacity-10"></i>
+        </section>
+
+        <section class="bg-white p-10 rounded-[2.5rem] shadow-sm border border-slate-100">
+            <h3 class="text-xl font-bold text-slate-800 mb-8">Weekly Activity Analysis</h3>
+            <div class="h-80">
+                <canvas id="timeChart"></canvas>
+            </div>
+        </section>
+    </main>
+
+    <script type="module">
+        const localUser = JSON.parse(localStorage.getItem('currentUser'));
+        const token = localStorage.getItem('token');
+        if (!localUser || !token) window.location.href = 'login.html';
+
+        let reminderInterval;
+
+        function startReminderService(events) {
+            if (reminderInterval) clearInterval(reminderInterval);
+            
+            const check = () => {
+                const now = new Date();
+                let notifiedList = JSON.parse(localStorage.getItem('notifiedEvents') || '[]');
+
+                events.forEach(ev => {
+                    if (ev.reminder && ev.reminder !== 'none' && !notifiedList.includes(ev.id)) {
+                        let eventDate;
+                        if (ev.allDay) {
+                            eventDate = new Date(`${ev.date}T00:00:00`);
+                        } else {
+                            eventDate = new Date(`${ev.date}T${ev.time || '00:00'}:00`);
+                        }
+                        
+                        const reminderOffsetMs = parseInt(ev.reminder) * 60 * 1000;
+                        const triggerTime = new Date(eventDate.getTime() - reminderOffsetMs);
+
+                        if (now >= triggerTime && now <= new Date(eventDate.getTime() + 60000)) {
+                            if ("Notification" in window && Notification.permission === "granted") {
+                                new Notification("EduPortal Reminder", { body: `Upcoming Event: ${ev.title}` });
+                            } else {
+                                alert(`Reminder: ${ev.title} is coming up!`);
+                            }
+                            notifiedList.push(ev.id);
+                            localStorage.setItem('notifiedEvents', JSON.stringify(notifiedList));
+                        }
+                    }
+                });
+            };
+            
+            check();
+            reminderInterval = setInterval(check, 60000);
+            
+            if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
+                Notification.requestPermission();
+            }
+        }
+
+        async function fetchUserData() {
+            try {
+                // Fetch Announcements
+                fetchAnnouncements();
+
+                const res = await fetch('/user/profile', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    renderDashboard(data);
+                    startReminderService(data.events || []);
+                } else {
+                    if (res.status === 401) window.logout();
+                }
+            } catch (err) {
+                console.error("Error fetching user data:", err);
+            }
+        }
+        
+        fetchUserData();
+
+        function renderDashboard(data) {
+            const hour = new Date().getHours();
+            let greet = hour < 12 ? "Good Morning" : (hour < 17 ? "Good Afternoon" : "Good Evening");
+            
+            document.getElementById('user-welcome').innerText = `${greet}, ${data.name}`;
+            document.getElementById('user-reg').innerText = `ID: ${data.regNo}`;
+            document.getElementById('user-avatar').innerText = data.name.charAt(0).toUpperCase();
+
+            // Mapping subject names to specific Font Awesome icons
+            const getIcon = (subject) => {
+                const sub = subject.toLowerCase();
+                if (sub.includes('math')) return 'fa-calculator';
+                if (sub.includes('physic')) return 'fa-atom';
+                if (sub.includes('os') || sub.includes('operating')) return 'fa-microchip';
+                if (sub.includes('dsa') || sub.includes('data')) return 'fa-code-branch';
+                if (sub.includes('oops') || sub.includes('object')) return 'fa-cube';
+                return 'fa-book'; // Fallback icon
+            };
+
+            const grid = document.getElementById('subject-grid');
+            grid.innerHTML = ''; 
+
+            const subjectSelect = document.getElementById('timer-subject');
+            subjectSelect.innerHTML = '<option value="" disabled selected class="text-slate-800">Select a Subject</option>';
+
+            data.subjects.forEach(sub => {
+                subjectSelect.innerHTML += `<option value="${sub}" class="text-slate-800">${sub}</option>`;
+                grid.innerHTML += `
+                    <div class="subject-card bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm relative">
+                        <div class="flex justify-between items-start mb-6">
+                            <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center text-xl">
+                                <i class="fas ${getIcon(sub)}"></i>
+                            </div>
+                            <a href="progress.html" class="text-slate-200 hover:text-indigo-400 transition">
+                                <i class="fas fa-chart-line text-lg"></i>
+                            </a>
+                        </div>
+                        <h4 class="text-xl font-bold text-slate-800 capitalize mb-1">${sub}</h4>
+                        <a href="subject_detail.html?name=${encodeURIComponent(sub)}" class="text-indigo-600 font-bold text-sm hover:underline flex items-center gap-1">
+                            Access Resources <i class="fas fa-arrow-right text-[10px]"></i>
+                        </a>
+                    </div>`;
+            });
+
+            renderChart(data);
+        }
+
+        // Logic for the background chart
+        let myChart = null;
+        function renderChart(data) {
+            const ctx = document.getElementById('timeChart').getContext('2d');
+            if (myChart) myChart.destroy();
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.subjects,
+                    datasets: [{
+                        label: 'Hours Studied',
+                        data: data.subjects.map(s => (data.studyTimeData && data.studyTimeData[s]) ? data.studyTimeData[s] : 0),
+                        backgroundColor: '#6366f1',
+                        borderRadius: 12
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+            });
+        }
+
+        // Timer Logic
+        let timerInterval;
+        let timeLeft = 25 * 60;
+        let initialTime = 25 * 60;
+        let isRunning = false;
+
+        function updateTimerDisplay() {
+            const m = Math.floor(timeLeft / 60).toString().padStart(2, '0');
+            const s = (timeLeft % 60).toString().padStart(2, '0');
+            document.getElementById('timer-display').innerText = `${m}:${s}`;
+        }
+
+        window.startTimer = () => {
+            if (!document.getElementById('timer-subject').value) {
+                return alert("Please select a subject to study first!");
+            }
+            if (isRunning) return;
+            isRunning = true;
+            document.getElementById('btn-start').classList.add('hidden');
+            document.getElementById('btn-pause').classList.remove('hidden');
+            document.getElementById('btn-stop').classList.remove('hidden');
+
+            timerInterval = setInterval(() => {
+                if (timeLeft > 0) {
+                    timeLeft--;
+                    updateTimerDisplay();
+                } else {
+                    stopTimer(); // Auto stop at 0
+                }
+            }, 1000);
+        };
+
+        window.pauseTimer = () => {
+            isRunning = false;
+            clearInterval(timerInterval);
+            document.getElementById('btn-start').classList.remove('hidden');
+            document.getElementById('btn-pause').classList.add('hidden');
+            document.getElementById('btn-start').innerText = "Resume";
+        };
+
+        window.stopTimer = async () => {
+            isRunning = false;
+            clearInterval(timerInterval);
+            
+            const studiedSeconds = initialTime - timeLeft;
+            const studiedMinutes = Math.floor(studiedSeconds / 60);
+            const subject = document.getElementById('timer-subject').value;
+            
+            timeLeft = 25 * 60;
+            updateTimerDisplay();
+            document.getElementById('btn-start').classList.remove('hidden');
+            document.getElementById('btn-start').innerText = "Start Focus";
+            document.getElementById('btn-pause').classList.add('hidden');
+            document.getElementById('btn-stop').classList.add('hidden');
+
+            if (studiedMinutes > 0 && subject) {
+                document.getElementById('btn-start').innerText = "Saving...";
+                try {
+                    const res = await fetch('/user/log-study', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                        body: JSON.stringify({ subject, minutes: studiedMinutes })
+                    });
+                    if (res.ok) {
+                        alert(`Awesome! Logged ${studiedMinutes} minutes of study time for ${subject}.`);
+                        fetchUserData();
+                    }
+                } catch (err) {
+                    console.error("Failed to log study time:", err);
+                } finally {
+                    document.getElementById('btn-start').innerText = "Start Focus";
+                }
+            } else {
+                alert("Session ended before 1 full minute passed. No time logged.");
+            }
+        };
+
+        async function fetchAnnouncements() {
+            try {
+                const res = await fetch('/announcements', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    const announcements = await res.json();
+                    const list = document.getElementById('announcement-list');
+                    if (announcements.length === 0) {
+                        list.innerHTML = `<p class="text-slate-400 font-bold p-6">No recent announcements.</p>`;
+                        return;
+                    }
+                    list.innerHTML = announcements.slice(0, 3).map(a => `
+                        <div class="p-6 bg-white rounded-3xl border border-slate-100 hover:border-indigo-200 transition shadow-sm">
+                            <div class="flex justify-between items-start mb-2">
+                                <h4 class="font-bold text-slate-800">${a.title}</h4>
+                                <span class="text-[10px] text-slate-400 font-black uppercase tracking-widest">${new Date(a.createdAt).toLocaleDateString()}</span>
+                            </div>
+                            <p class="text-sm text-slate-600 leading-relaxed">${a.body}</p>
+                            <p class="text-[10px] text-indigo-500 font-bold uppercase mt-3 tracking-widest">Posted by ${a.author}</p>
+                        </div>
+                    `).join('');
+                }
+            } catch (err) {
+                console.error("Error fetching announcements:", err);
+            }
+        }
+
+        window.logout = () => { localStorage.clear(); window.location.href = 'login.html'; };
+    </script>
+</body>
+</html>
