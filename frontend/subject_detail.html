@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Resources & Forum | EduPortal</title>
+    <title>Resources & Forum | Core</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -161,7 +161,10 @@
             if (facultyItems.length > 0) {
                 container.innerHTML += `<div class="col-span-full"><h3 class="text-xl font-black text-slate-800 italic uppercase mb-4 border-b pb-2">Faculty Materials</h3></div>`;
                 facultyItems.forEach((item) => {
-                    const canDelete = localUser.role === 'teacher' && localUser._id === item.authorId;
+                    // EXTREMELY STRICT: Must be a teacher AND IDs must exist and match
+                    const canDelete = (localUser.role === 'teacher') && 
+                                      (item.authorId && localUser._id) && 
+                                      (String(localUser._id) === String(item.authorId));
                     container.innerHTML += `
                         <div class="resource-card bg-white p-8 rounded-[2rem] cursor-pointer relative group" onclick="window.openResource('${item.data}')">
                             ${canDelete ? `

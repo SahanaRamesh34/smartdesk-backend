@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard | EduPortal</title>
+    <title>Dashboard | Core</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -17,7 +17,7 @@
 
     <aside class="w-64 bg-[#2D317A] text-white flex flex-col shrink-0">
         <div class="p-8 border-b border-white/5">
-            <h1 class="text-2xl font-black tracking-widest italic uppercase">EduPortal</h1>
+            <h1 class="text-2xl font-black tracking-widest italic uppercase">Core</h1>
         </div>
         
         <nav class="flex-1 mt-8 px-4 space-y-2">
@@ -48,8 +48,37 @@
                 <h2 id="user-welcome" class="text-4xl font-black text-slate-800 italic leading-tight uppercase">Loading...</h2>
                 <p id="user-reg" class="text-slate-400 font-bold tracking-wide text-sm">ID: SYNCING...</p>
             </div>
-            <div id="user-avatar" class="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-600 shadow-xl flex items-center justify-center text-white text-xl font-bold">
+            
+            <div class="flex items-center gap-6">
+                <!-- Search Bar -->
+                <div class="relative">
+                    <input type="text" id="global-search" oninput="debounceSearch()" placeholder="Search all resources..." class="pl-10 pr-4 py-3 rounded-full bg-white border border-slate-200 shadow-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 w-64 transition-all">
+                    <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    
+                    <!-- Search Results Dropdown -->
+                    <div id="search-results" class="absolute top-full mt-2 w-[400px] right-0 bg-white rounded-2xl shadow-2xl border border-slate-100 hidden z-50 max-h-96 overflow-y-auto">
+                        <!-- Results go here -->
+                    </div>
                 </div>
+
+                <!-- Notifications / Access Requests -->
+                <div class="relative">
+                    <button onclick="toggleRequestsDropdown()" class="w-14 h-14 rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center justify-center text-slate-500 hover:text-indigo-600 transition relative">
+                        <i class="fas fa-bell text-xl"></i>
+                        <span id="requests-badge" class="absolute top-3 right-3 w-3 h-3 bg-red-500 rounded-full hidden border-2 border-white"></span>
+                    </button>
+                    <!-- Requests Dropdown -->
+                    <div id="requests-dropdown" class="absolute top-full mt-2 w-[350px] right-0 bg-white rounded-2xl shadow-2xl border border-slate-100 hidden z-50 p-4 max-h-96 overflow-y-auto">
+                        <h4 class="font-bold text-slate-800 mb-3 uppercase tracking-widest text-xs border-b pb-2">Access Requests</h4>
+                        <div id="incoming-requests-list" class="space-y-3">
+                            <p class="text-xs text-slate-400">No pending requests.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="user-avatar" class="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-600 shadow-xl flex items-center justify-center text-white text-xl font-bold">
+                </div>
+            </div>
         </header>
 
         <section class="mb-16">
@@ -75,6 +104,11 @@
         <!-- POMODORO TIMER -->
         <section class="bg-indigo-600 text-white p-10 rounded-[2.5rem] shadow-xl mb-16 relative overflow-hidden flex flex-col items-center">
             <h3 class="text-2xl font-black italic uppercase mb-6 z-10">Focus Timer</h3>
+
+            <div class="flex gap-4 mb-6 z-10 bg-white/10 p-2 rounded-2xl backdrop-blur-md">
+                <button id="mode-pomodoro" onclick="setTimerMode('pomodoro')" class="px-6 py-2 rounded-xl bg-white text-indigo-600 font-bold transition">Pomodoro</button>
+                <button id="mode-stopwatch" onclick="setTimerMode('stopwatch')" class="px-6 py-2 rounded-xl text-white font-bold hover:bg-white/20 transition">Stopwatch</button>
+            </div>
             
             <select id="timer-subject" class="bg-white/20 border border-white/30 text-white p-4 rounded-2xl mb-6 outline-none font-bold backdrop-blur-md z-10 w-full max-w-xs cursor-pointer appearance-none text-center">
                 <option value="" disabled selected class="text-slate-800">Select a Subject</option>
@@ -127,7 +161,7 @@
 
                         if (now >= triggerTime && now <= new Date(eventDate.getTime() + 60000)) {
                             if ("Notification" in window && Notification.permission === "granted") {
-                                new Notification("EduPortal Reminder", { body: `Upcoming Event: ${ev.title}` });
+                                new Notification("CORE Reminder", { body: `Upcoming Event: ${ev.title}` });
                             } else {
                                 alert(`Reminder: ${ev.title} is coming up!`);
                             }
@@ -150,6 +184,9 @@
             try {
                 // Fetch Announcements
                 fetchAnnouncements();
+                
+                // Fetch Access Requests
+                fetchAccessRequests();
 
                 const res = await fetch('/user/profile', {
                     headers: { 'Authorization': `Bearer ${token}` }
@@ -236,14 +273,35 @@
         }
 
         // Timer Logic
+        let timerMode = 'pomodoro'; // 'pomodoro' or 'stopwatch'
         let timerInterval;
-        let timeLeft = 25 * 60;
+        let timeLeft = 25 * 60; // used for pomodoro
+        let timeElapsed = 0; // used for stopwatch
         let initialTime = 25 * 60;
         let isRunning = false;
 
+        window.setTimerMode = (mode) => {
+            if (isRunning) {
+                alert("Please pause or stop the current session before switching modes.");
+                return;
+            }
+            timerMode = mode;
+            if (mode === 'pomodoro') {
+                document.getElementById('mode-pomodoro').className = "px-6 py-2 rounded-xl bg-white text-indigo-600 font-bold transition";
+                document.getElementById('mode-stopwatch').className = "px-6 py-2 rounded-xl text-white font-bold hover:bg-white/20 transition";
+                timeLeft = 25 * 60;
+            } else {
+                document.getElementById('mode-stopwatch').className = "px-6 py-2 rounded-xl bg-white text-indigo-600 font-bold transition";
+                document.getElementById('mode-pomodoro').className = "px-6 py-2 rounded-xl text-white font-bold hover:bg-white/20 transition";
+                timeElapsed = 0;
+            }
+            updateTimerDisplay();
+        };
+
         function updateTimerDisplay() {
-            const m = Math.floor(timeLeft / 60).toString().padStart(2, '0');
-            const s = (timeLeft % 60).toString().padStart(2, '0');
+            let t = timerMode === 'pomodoro' ? timeLeft : timeElapsed;
+            const m = Math.floor(t / 60).toString().padStart(2, '0');
+            const s = (t % 60).toString().padStart(2, '0');
             document.getElementById('timer-display').innerText = `${m}:${s}`;
         }
 
@@ -258,11 +316,16 @@
             document.getElementById('btn-stop').classList.remove('hidden');
 
             timerInterval = setInterval(() => {
-                if (timeLeft > 0) {
-                    timeLeft--;
-                    updateTimerDisplay();
+                if (timerMode === 'pomodoro') {
+                    if (timeLeft > 0) {
+                        timeLeft--;
+                        updateTimerDisplay();
+                    } else {
+                        stopTimer(); // Auto stop at 0
+                    }
                 } else {
-                    stopTimer(); // Auto stop at 0
+                    timeElapsed++;
+                    updateTimerDisplay();
                 }
             }, 1000);
         };
@@ -279,12 +342,17 @@
             isRunning = false;
             clearInterval(timerInterval);
             
-            const studiedSeconds = initialTime - timeLeft;
+            let studiedSeconds = timerMode === 'pomodoro' ? (initialTime - timeLeft) : timeElapsed;
             const studiedMinutes = Math.floor(studiedSeconds / 60);
             const subject = document.getElementById('timer-subject').value;
             
-            timeLeft = 25 * 60;
+            if (timerMode === 'pomodoro') {
+                timeLeft = 25 * 60;
+            } else {
+                timeElapsed = 0;
+            }
             updateTimerDisplay();
+            
             document.getElementById('btn-start').classList.remove('hidden');
             document.getElementById('btn-start').innerText = "Start Focus";
             document.getElementById('btn-pause').classList.add('hidden');
@@ -339,6 +407,156 @@
                 console.error("Error fetching announcements:", err);
             }
         }
+
+        // Search & Access Request Logic
+        let searchTimeout;
+
+        window.debounceSearch = () => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(performSearch, 500);
+        };
+
+        async function performSearch() {
+            const query = document.getElementById('global-search').value.trim();
+            const resultsBox = document.getElementById('search-results');
+            if (!query) {
+                resultsBox.classList.add('hidden');
+                return;
+            }
+
+            try {
+                const res = await fetch(`/resources/search?q=${encodeURIComponent(query)}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    renderSearchResults(data);
+                }
+            } catch (err) {
+                console.error("Search failed:", err);
+            }
+        }
+
+        function renderSearchResults(results) {
+            const resultsBox = document.getElementById('search-results');
+            resultsBox.classList.remove('hidden');
+
+            if (results.length === 0) {
+                resultsBox.innerHTML = `<div class="p-4 text-sm text-slate-500 text-center">No results found.</div>`;
+                return;
+            }
+
+            resultsBox.innerHTML = results.map(r => {
+                let actionHtml = '';
+                if (r.url) {
+                    actionHtml = `<a href="${r.url}" target="_blank" class="text-xs bg-indigo-50 text-indigo-600 px-3 py-1 rounded-lg font-bold hover:bg-indigo-100 transition">Open</a>`;
+                } else {
+                    actionHtml = `<button onclick="requestAccess('${r.ownerId}', '${r.id}', '${r.title.replace(/'/g, "\\'")}')" class="text-xs bg-slate-800 text-white px-3 py-1 rounded-lg font-bold hover:bg-slate-700 transition">Request Access</button>`;
+                }
+
+                return `
+                <div class="p-4 border-b border-slate-50 hover:bg-slate-50 flex justify-between items-center transition">
+                    <div>
+                        <p class="font-bold text-slate-800 text-sm">${r.title}</p>
+                        <p class="text-xs text-slate-400 mt-1"><i class="fas ${r.type === 'global' ? 'fa-globe text-blue-400' : 'fa-lock text-slate-400'}"></i> ${r.subject} &bull; ${r.authorName}</p>
+                    </div>
+                    <div>
+                        ${actionHtml}
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        window.requestAccess = async (ownerId, resourceId, resourceTitle) => {
+            try {
+                const res = await fetch('/resources/request-access', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ ownerId, resourceId, resourceTitle })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    alert("Access request sent to the owner!");
+                } else {
+                    alert(data.message || "Failed to send request.");
+                }
+            } catch (err) {
+                console.error("Request access error:", err);
+            }
+        };
+
+        window.toggleRequestsDropdown = () => {
+            const dropdown = document.getElementById('requests-dropdown');
+            dropdown.classList.toggle('hidden');
+        };
+
+        async function fetchAccessRequests() {
+            try {
+                const res = await fetch('/resources/access-requests', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    const { incoming } = await res.json();
+                    const pending = incoming.filter(req => req.status === 'pending');
+                    
+                    const badge = document.getElementById('requests-badge');
+                    if (pending.length > 0) {
+                        badge.classList.remove('hidden');
+                    } else {
+                        badge.classList.add('hidden');
+                    }
+
+                    const list = document.getElementById('incoming-requests-list');
+                    if (pending.length === 0) {
+                        list.innerHTML = `<p class="text-xs text-slate-400">No pending requests.</p>`;
+                        return;
+                    }
+
+                    list.innerHTML = pending.map(req => `
+                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                            <p class="text-sm font-bold text-slate-800">${req.requesterName} <span class="font-normal text-slate-500">requested access to</span> ${req.resourceTitle}</p>
+                            <div class="flex gap-2 mt-3">
+                                <button onclick="handleRequest('${req._id}', 'approved')" class="flex-1 bg-green-500 text-white text-xs font-bold py-2 rounded-lg hover:bg-green-600 transition">Approve</button>
+                                <button onclick="handleRequest('${req._id}', 'denied')" class="flex-1 bg-red-500 text-white text-xs font-bold py-2 rounded-lg hover:bg-red-600 transition">Deny</button>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch (err) {
+                console.error("Failed to fetch access requests:", err);
+            }
+        }
+
+        window.handleRequest = async (requestId, status) => {
+            try {
+                const res = await fetch(`/resources/access-requests/${requestId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ status })
+                });
+                if (res.ok) {
+                    fetchAccessRequests(); // Refresh the list
+                    // Also re-trigger search if it's open so it updates buttons if needed, though usually owner handles requests so no big deal
+                }
+            } catch (err) {
+                console.error("Failed to update request:", err);
+            }
+        };
+
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', (e) => {
+            const searchBox = document.getElementById('global-search');
+            const searchResults = document.getElementById('search-results');
+            if (searchResults && !searchBox.contains(e.target) && !searchResults.contains(e.target)) {
+                searchResults.classList.add('hidden');
+            }
+            
+            const reqDropdown = document.getElementById('requests-dropdown');
+            const reqButton = document.querySelector('button[onclick="toggleRequestsDropdown()"]');
+            if (reqDropdown && !reqDropdown.contains(e.target) && !reqButton.contains(e.target)) {
+                reqDropdown.classList.add('hidden');
+            }
+        });
 
         window.logout = () => { localStorage.clear(); window.location.href = 'login.html'; };
     </script>
